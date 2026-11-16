@@ -1,13 +1,17 @@
 // @vitest-environment node
 // Runs the real SQL migrations on a real Postgres engine (PGlite, WASM build of Postgres).
 // Supabase's auth schema is stubbed (auth.users, auth.uid(), roles) because PGlite has no Supabase.
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 import { beforeAll, describe, expect, it } from "vitest";
 
 const A = "00000000-0000-0000-0000-0000000000a1";
 const B = "00000000-0000-0000-0000-0000000000b2";
 let db: PGlite;
+
+// The database setup (supabase/schema.sql) is not part of the public snapshot, so these
+// tests only run when the file is present locally.
+const hasSchema = existsSync("supabase/schema.sql");
 
 async function as(user: string | null, sql: string, params: unknown[] = []) {
   await db.exec(`set role ${user ? "authenticated" : "anon"}`);
@@ -22,6 +26,7 @@ async function as(user: string | null, sql: string, params: unknown[] = []) {
 }
 
 beforeAll(async () => {
+  if (!hasSchema) return;
   db = new PGlite();
   await db.exec(`
     create role anon nologin; create role authenticated nologin;
@@ -51,7 +56,7 @@ const tables = [
   "user_data",
 ];
 
-describe("real Postgres: schema and RLS", () => {
+describe.skipIf(!hasSchema)("real Postgres: schema and RLS", () => {
   it("RLS is enabled on every user-owned table with 4 policies each", async () => {
     for (const t of tables) {
       const r = await db.query(
