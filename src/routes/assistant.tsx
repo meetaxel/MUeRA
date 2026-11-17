@@ -19,7 +19,6 @@ import {
   today,
   useStore,
   type ChatMsg,
-  type TaskType,
 } from "@/lib/store";
 
 export const Route = createFileRoute("/assistant")({
