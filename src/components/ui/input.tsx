@@ -3,18 +3,22 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { numericDraft } from "@/lib/numeric";
 
+type InputValue = React.ComponentProps<"input">["value"];
+
 const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
   ({ className, type, ...props }, ref) => {
     const numeric = type === "number";
-    const display = (v: typeof props.value) =>
-      v == null || v === 0 ? "" : (numericDraft(String(v)) ?? "");
+    const display = React.useCallback(
+      (v: InputValue) => (v == null || v === 0 ? "" : (numericDraft(String(v)) ?? "")),
+      [],
+    );
     const [draft, setDraft] = React.useState(() => display(props.value));
     const editing = React.useRef(false);
     const lastValue = React.useRef(props.value);
     React.useEffect(() => {
       if (!editing.current && lastValue.current !== props.value) setDraft(display(props.value));
       lastValue.current = props.value;
-    }, [props.value]);
+    }, [props.value, display]);
     return (
       <input
         type={numeric ? "text" : type}
