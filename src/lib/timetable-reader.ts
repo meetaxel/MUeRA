@@ -1,6 +1,7 @@
 /** Browser-only, called on upload. PDF coordinates preserve table rows/columns. */
-type Positioned = { text: string; x: number; y: number; width: number };
-function rows(items: Positioned[]): string {
+export type Positioned = { text: string; x: number; y: number; width: number };
+/** Groups positioned words into text lines: rows by y proximity, columns by x gaps. */
+export function rows(items: Positioned[]): string {
   const grouped: Positioned[][] = [];
   items
     .sort((a, b) => a.y - b.y || a.x - b.x)
