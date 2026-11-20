@@ -20,8 +20,8 @@ attendance, study planning and a PDF learning assistant in one installable web a
 > - The current live app at https://muera.page.gd runs a newer frontend build whose
 >   editable source is not on the hosting account and is not part of this snapshot.
 >
-> **Not verified.** Setup, build and tests have **not** been run on this snapshot.
-> This package does not run the current app.
+> **Verified on 20 Nov 2026.** Dependency install, lint, type check, tests and the
+> production build all pass on this snapshot. This package does not run the current app.
 
 ## Features (in this source)
 
