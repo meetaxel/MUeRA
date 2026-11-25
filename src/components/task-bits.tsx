@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { addDays, format, parseISO } from "date-fns";
 import { Check, Clock, Pencil, Trash2 } from "lucide-react";
 import {
@@ -93,23 +93,27 @@ export function TaskRow({ t, compact }: { t: Task; compact?: boolean }) {
 }
 
 export function TaskFields({ v, set }: { v: Partial<Task>; set: (p: Partial<Task>) => void }) {
+  const uid = useId();
+  const fieldId = (name: string) => `${uid}-${name}`;
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       <div className="sm:col-span-2">
-        <Label>Title</Label>
+        <Label htmlFor={fieldId("title")}>Title</Label>
         <Input
+          id={fieldId("title")}
           value={v.title ?? ""}
           onChange={(e) => set({ title: e.target.value })}
           placeholder="e.g. Quiz 3"
         />
       </div>
       <div>
-        <Label>Subject</Label>
-        <Input value={v.subject ?? ""} onChange={(e) => set({ subject: e.target.value })} />
+        <Label htmlFor={fieldId("subject")}>Subject</Label>
+        <Input id={fieldId("subject")} value={v.subject ?? ""} onChange={(e) => set({ subject: e.target.value })} />
       </div>
       <div>
-        <Label>Type</Label>
+        <Label htmlFor={fieldId("type")}>Type</Label>
         <select
+          id={fieldId("type")}
           className="h-9 w-full rounded-md border bg-background px-2 text-sm"
           value={v.type}
           onChange={(e) => set({ type: e.target.value as TaskType })}
@@ -122,16 +126,17 @@ export function TaskFields({ v, set }: { v: Partial<Task>; set: (p: Partial<Task
         </select>
       </div>
       <div>
-        <Label>Date</Label>
-        <Input type="date" value={v.date ?? ""} onChange={(e) => set({ date: e.target.value })} />
+        <Label htmlFor={fieldId("date")}>Date</Label>
+        <Input id={fieldId("date")} type="date" value={v.date ?? ""} onChange={(e) => set({ date: e.target.value })} />
       </div>
       <div>
-        <Label>Time</Label>
-        <Input type="time" value={v.time ?? ""} onChange={(e) => set({ time: e.target.value })} />
+        <Label htmlFor={fieldId("time")}>Time</Label>
+        <Input id={fieldId("time")} type="time" value={v.time ?? ""} onChange={(e) => set({ time: e.target.value })} />
       </div>
       <div>
-        <Label>Remind me (minutes before)</Label>
+        <Label htmlFor={fieldId("reminder")}>Remind me (minutes before)</Label>
         <Input
+          id={fieldId("reminder")}
           type="number"
           min={0}
           value={v.reminderMin ?? ""}
@@ -141,8 +146,8 @@ export function TaskFields({ v, set }: { v: Partial<Task>; set: (p: Partial<Task
         />
       </div>
       <div className="sm:col-span-2">
-        <Label>Notes</Label>
-        <Textarea value={v.notes ?? ""} onChange={(e) => set({ notes: e.target.value })} />
+        <Label htmlFor={fieldId("notes")}>Notes</Label>
+        <Textarea id={fieldId("notes")} value={v.notes ?? ""} onChange={(e) => set({ notes: e.target.value })} />
       </div>
     </div>
   );
