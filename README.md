@@ -78,8 +78,14 @@ public/          PWA icons, manifest, service worker, robots
 5. Run the test suite: `npm test`.
 
 AI-powered features need an AI backend, which is not included in this snapshot; in
-this source they show a "not included" message. Setup, build and tests have not been
-run on this snapshot.
+this source they show a "not included" message.
+
+### Development checks
+
+- `npm test` runs the Vitest unit and component suite (jsdom + Testing Library).
+- `npm run lint` runs ESLint; `npx tsc --noEmit` type-checks without building.
+- GitHub Actions (`.github/workflows/ci.yml`) runs install, type-check, lint and
+  tests on every push and pull request to `main`.
 
 ## Security and privacy
 
