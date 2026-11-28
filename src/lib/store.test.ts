@@ -247,3 +247,85 @@ describe("actions.saveTimetable", () => {
     expect(getState().timetable[0].singleDate).toBe("2026-12-01");
   });
 });
+
+describe("actions.recordAttendance / correctAttendance", () => {
+  const seedSlot = () => {
+    actions.saveTimetable(
+      [
+        {
+          key: "k1",
+          subject: "Maths",
+          kind: "theory",
+          day: 2,
+          start: "09:00",
+          end: "10:00",
+          uncertain: false,
+          source: "",
+        },
+      ],
+      [{ name: "Maths", kind: "theory" }],
+      "2026-12-01",
+      "2026-12-31",
+      false,
+      false,
+    );
+    return { slot: getState().timetable[0], subject: () => getState().subjects[0] };
+  };
+
+  it("counts a present class as attended and conducted", () => {
+    const { slot, subject } = seedSlot();
+    actions.recordAttendance(slot.id, "2026-12-01", "Present");
+    expect(subject()).toMatchObject({ attended: 1, conducted: 1 });
+    expect(getState().attendanceRecords[0]).toMatchObject({
+      slotId: slot.id,
+      subjectId: subject().id,
+      date: "2026-12-01",
+      status: "Present",
+    });
+  });
+
+  it("counts an absent class as conducted only, and a cancelled one as neither", () => {
+    const { slot, subject } = seedSlot();
+    actions.recordAttendance(slot.id, "2026-12-01", "Absent");
+    actions.recordAttendance(slot.id, "2026-12-08", "Cancelled");
+    expect(subject()).toMatchObject({ attended: 0, conducted: 1 });
+    expect(getState().attendanceRecords).toHaveLength(2);
+  });
+
+  it("ignores dates the slot does not occur on and unknown slots", () => {
+    const { slot, subject } = seedSlot();
+    actions.recordAttendance(slot.id, "2026-12-02", "Present");
+    actions.recordAttendance(slot.id, "2027-01-06", "Present");
+    actions.recordAttendance("no-such-slot", "2026-12-01", "Present");
+    expect(subject()).toMatchObject({ attended: 0, conducted: 0 });
+    expect(getState().attendanceRecords).toHaveLength(0);
+  });
+
+  it("re-recording the same class replaces the status instead of double counting", () => {
+    const { slot, subject } = seedSlot();
+    actions.recordAttendance(slot.id, "2026-12-01", "Present");
+    actions.recordAttendance(slot.id, "2026-12-01", "Absent");
+    expect(subject()).toMatchObject({ attended: 0, conducted: 1 });
+    expect(getState().attendanceRecords).toHaveLength(1);
+  });
+
+  it("clearing a status removes the record and its counts", () => {
+    const { slot, subject } = seedSlot();
+    actions.recordAttendance(slot.id, "2026-12-01", "Present");
+    actions.recordAttendance(slot.id, "2026-12-01", null);
+    expect(subject()).toMatchObject({ attended: 0, conducted: 0 });
+    expect(getState().attendanceRecords).toHaveLength(0);
+  });
+
+  it("correctAttendance updates counts and can remove a record", () => {
+    const { slot, subject } = seedSlot();
+    actions.recordAttendance(slot.id, "2026-12-01", "Absent");
+    const recordId = getState().attendanceRecords[0].id;
+    actions.correctAttendance(recordId, "Present");
+    expect(subject()).toMatchObject({ attended: 1, conducted: 1 });
+    actions.correctAttendance(recordId, "Cancelled");
+    expect(subject()).toMatchObject({ attended: 0, conducted: 0 });
+    actions.correctAttendance(recordId, null);
+    expect(getState().attendanceRecords).toHaveLength(0);
+  });
+});
