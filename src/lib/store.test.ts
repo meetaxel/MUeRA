@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import type { ClassKind, TimetableDraft } from "./timetable";
 import {
   actions,
   exportData,
@@ -134,5 +135,115 @@ describe("actions", () => {
     actions.ensureSubject("  maths  ");
     actions.ensureSubject("   ");
     expect(getState().subjects.map((s) => s.name)).toEqual(["Maths"]);
+  });
+});
+
+describe("actions.saveTimetable", () => {
+  const draft = (extra: Partial<TimetableDraft> = {}): TimetableDraft => ({
+    key: "k1",
+    subject: "Maths",
+    kind: "theory",
+    day: 2,
+    start: "09:00",
+    end: "10:00",
+    uncertain: false,
+    source: "",
+    ...extra,
+  });
+  const save = (
+    entries: TimetableDraft[],
+    detected: { name: string; kind: ClassKind }[] = [{ name: "Maths", kind: "theory" }],
+    includeLabs = false,
+    replace = false,
+    recurring = true,
+  ) =>
+    actions.saveTimetable(entries, detected, "2026-12-01", "2026-12-31", includeLabs, replace, recurring);
+
+  it("rejects an inverted date range without touching state", () => {
+    const r = actions.saveTimetable([draft()], [], "2026-12-31", "2026-12-01", false, false);
+    expect(r.error).toMatch(/valid effective date/);
+    expect(getState().timetable).toHaveLength(0);
+    expect(getState().subjects).toHaveLength(0);
+  });
+
+  it("rejects when no entry is valid", () => {
+    const r = save([draft({ end: "08:00" })]);
+    expect(r.error).toMatch(/No valid class sessions/);
+    expect(getState().timetable).toHaveLength(0);
+  });
+
+  it("saves the subject and weekly slot with linked subjectId", () => {
+    const r = save([draft()]);
+    expect(r.error).toBeUndefined();
+    expect(r.subjectsSaved).toBe(1);
+    expect(r.saved).toBe(1);
+    const [slot] = getState().timetable;
+    expect(slot).toMatchObject({
+      subject: "Maths",
+      day: 2,
+      start: "09:00",
+      end: "10:00",
+      effectiveDate: "2026-12-01",
+      endDate: "2026-12-31",
+    });
+    expect(slot.subjectId).toBe(getState().subjects[0].id);
+    expect(slot.singleDate).toBeUndefined();
+  });
+
+  it("skips lab subjects but keeps lab sessions on the timetable when labs are not included", () => {
+    const r = save(
+      [draft(), draft({ key: "k2", subject: "Physics Lab", kind: "lab", start: "11:00", end: "12:00" })],
+      [
+        { name: "Maths", kind: "theory" },
+        { name: "Physics Lab", kind: "lab" },
+      ],
+    );
+    expect(r.error).toBeUndefined();
+    expect(getState().subjects.map((s) => s.name)).toEqual(["Maths"]);
+    expect(getState().timetable.map((s) => s.subject)).toEqual(["Maths", "Physics Lab"]);
+    expect(getState().timetable[1].subjectId).toBeUndefined();
+  });
+
+  it("includes lab subjects and sessions when labs are included", () => {
+    const r = save(
+      [draft({ subject: "Physics Lab", kind: "lab" })],
+      [{ name: "Physics Lab", kind: "lab" }],
+      true,
+    );
+    expect(r.error).toBeUndefined();
+    expect(getState().subjects[0]).toMatchObject({ name: "Physics Lab", kind: "lab" });
+    expect(getState().timetable[0].subjectId).toBe(getState().subjects[0].id);
+  });
+
+  it("does not duplicate a subject whose name only differs by case or spacing", () => {
+    const r = save([draft({ subject: "  maths " })], [{ name: "Maths", kind: "theory" }]);
+    expect(r.error).toBeUndefined();
+    expect(getState().subjects).toHaveLength(1);
+    expect(getState().timetable[0].subjectId).toBe(getState().subjects[0].id);
+  });
+
+  it("reports an unchanged re-import as already saved", () => {
+    save([draft()]);
+    const r = save([draft()]);
+    expect(r.duplicates).toBe(1);
+    expect(r.error).toMatch(/already saved/);
+    expect(getState().timetable).toHaveLength(1);
+  });
+
+  it("replace clears the old timetable but keeps existing subjects", () => {
+    save([draft()]);
+    const oldId = getState().timetable[0].id;
+    const r = save([draft({ start: "10:00", end: "11:00" })], [], false, true);
+    expect(r.error).toBeUndefined();
+    expect(getState().timetable).toHaveLength(1);
+    expect(getState().timetable[0].start).toBe("10:00");
+    expect(getState().timetable[0].id).not.toBe(oldId);
+    expect(getState().subjects).toHaveLength(1);
+  });
+
+  it("stamps singleDate on a one-day schedule", () => {
+    const r = save([draft()], undefined, false, false, false);
+    expect(r.error).toBeUndefined();
+    expect(getState().timetable[0].singleDate).toBe("2026-12-01");
   });
 });
